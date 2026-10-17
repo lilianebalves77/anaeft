@@ -33,18 +33,26 @@ export default function Contact() {
     const formData = new FormData(form)
 
     const payload = {
-      nome: String(formData.get('nome') ?? ''),
-      email: String(formData.get('email') ?? ''),
-      whatsapp: String(formData.get('whatsapp') ?? ''),
-      motivo: String(formData.get('motivo') ?? ''),
-      preferencia: String(formData.get('preferencia') ?? 'E-mail'),
+      access_key: process.env.NEXT_PUBLIC_WEB3FORMS_ACCESS_KEY,
+      subject: 'Nova mensagem do site — Ana Margarida | Terapeuta EFT',
+      from_name: 'Site Ana Margarida | Terapeuta EFT',
+      name: String(formData.get('nome') ?? '').trim(),
+      email: String(formData.get('email') ?? '').trim(),
+      whatsapp: String(formData.get('whatsapp') ?? '').trim(),
+      preferencia: String(formData.get('preferencia') ?? 'E-mail').trim(),
+      message: String(formData.get('motivo') ?? '').trim(),
     }
 
     try {
-      const response = await fetch('/api/contact', {
+      if (!payload.access_key) {
+        throw new Error('A chave do formulário não está configurada.')
+      }
+
+      const response = await fetch('https://api.web3forms.com/submit', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          Accept: 'application/json',
         },
         body: JSON.stringify(payload),
       })
@@ -52,14 +60,14 @@ export default function Contact() {
       const result = await response.json()
 
       if (!response.ok || !result.success) {
-        throw new Error(
-          result.message || 'Não foi possível enviar a mensagem.'
-        )
+        console.error('Web3Forms:', result)
+        throw new Error('Não foi possível enviar a mensagem.')
       }
 
       setSent(true)
       form.reset()
-    } catch {
+    } catch (err) {
+      console.error('Erro ao enviar formulário:', err)
       setError(
         'Não foi possível enviar a mensagem. Tenta novamente ou contacta a Ana por WhatsApp ou e-mail.'
       )
@@ -234,7 +242,10 @@ export default function Contact() {
               </label>
 
               {error && (
-                <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-800">
+                <p
+                  role="alert"
+                  className="rounded-xl bg-red-50 p-3 text-sm text-red-800"
+                >
                   {error}
                 </p>
               )}

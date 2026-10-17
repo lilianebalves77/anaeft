@@ -6,6 +6,7 @@ export async function POST(request: Request) {
     const accessKey = process.env.WEB3FORMS_ACCESS_KEY
 
     if (!accessKey) {
+      console.error('Web3Forms: variável de ambiente em falta.')
       return NextResponse.json(
         { success: false, message: 'Configuração do formulário em falta.' },
         { status: 500 }
@@ -45,26 +46,41 @@ export async function POST(request: Request) {
       }),
     })
 
-    const result = await response.json()
+    const responseText = await response.text()
+
+    console.log('Web3Forms HTTP status:', response.status)
+    console.log('Web3Forms resposta:', responseText.slice(0, 1000))
+
+    let result: { success?: boolean }
+
+    try {
+      result = JSON.parse(responseText)
+    } catch {
+      console.error('Web3Forms devolveu uma resposta que não é JSON.')
+      return NextResponse.json(
+        { success: false, message: 'Resposta inválida do serviço de envio.' },
+        { status: 502 }
+      )
+    }
 
     if (!response.ok || !result.success) {
       return NextResponse.json(
-        {
-          success: false,
-          message: 'Não foi possível enviar a mensagem. Tenta novamente.',
-        },
+        { success: false, message: 'Não foi possível enviar a mensagem. Tenta novamente.' },
         { status: 502 }
       )
     }
 
     return NextResponse.json({ success: true })
-  } catch {
+  } catch (error) {
+    console.error(
+      'Erro na API de contacto:',
+      error instanceof Error ? error.message : 'Erro desconhecido'
+    )
+
     return NextResponse.json(
-      {
-        success: false,
-        message: 'Ocorreu um erro. Tenta novamente mais tarde.',
-      },
+      { success: false, message: 'Ocorreu um erro. Tenta novamente mais tarde.' },
       { status: 500 }
     )
   }
 }
+
