@@ -3,27 +3,90 @@ import { NextResponse } from 'next/server'
 
 export async function POST(request: Request) {
   try {
+    const contentType = request.headers.get('content-type') || ''
+
+    if (!contentType.includes('application/json')) {
+      return NextResponse.json(
+        { success: false, message: 'Formato inválido.' },
+        { status: 415 }
+      )
+    }
+
     const accessKey = process.env.WEB3FORMS_ACCESS_KEY
 
     if (!accessKey) {
-      console.error('Web3Forms: variável de ambiente em falta.')
+      console.error('Web3Forms: configuração em falta.')
+
       return NextResponse.json(
-        { success: false, message: 'Configuração do formulário em falta.' },
+        { success: false, message: 'Serviço temporariamente indisponível.' },
         { status: 500 }
       )
     }
 
-    const body = await request.json()
+    
+    const contentLength = Number(request.headers.get('content-length') || 0)
 
-    const nome = String(body.nome ?? '').trim()
-    const email = String(body.email ?? '').trim()
-    const whatsapp = String(body.whatsapp ?? '').trim()
-    const motivo = String(body.motivo ?? '').trim()
-    const preferencia = String(body.preferencia ?? 'E-mail').trim()
-
-    if (!nome || !email || !motivo) {
+    if (contentLength > 16_384) {
       return NextResponse.json(
-        { success: false, message: 'Preenche os campos obrigatórios.' },
+        { success: false, message: 'Pedido demasiado grande.' },
+        { status: 413 }
+      )
+    }
+
+    const rawBody = await request.text()
+
+    if (new TextEncoder().encode(rawBody).length > 16_384) {
+      return NextResponse.json(
+        { success: false, message: 'Pedido demasiado grande.' },
+        { status: 413 }
+      )
+    }
+
+    let body: unknown
+
+    try {
+      body = JSON.parse(rawBody)
+    } catch {
+      return NextResponse.json(
+        { success: false, message: 'Dados inválidos.' },
+        { status: 400 }
+      )
+    }
+
+
+   
+    if (
+      !body ||
+      typeof body !== 'object' ||
+      Array.isArray(body)
+    ) {
+      return NextResponse.json(
+        { success: false, message: 'Dados inválidos.' },
+        { status: 400 }
+      )
+    }
+
+    const data = body as Record<string, unknown>
+
+   
+
+const nome = typeof data.nome === 'string' ? data.nome.trim() : ''
+const email = typeof data.email === 'string' ? data.email.trim() : ''
+const motivo = typeof data.motivo === 'string' ? data.motivo.trim() : ''
+const consentimento = data.consentimento === true
+
+    if (
+      !consentimento ||
+      !nome ||
+      nome.length > 100 ||
+      !email ||
+      email.length > 254 ||
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ||
+      !motivo ||
+      motivo.length > 3000
+    ) {
+      return NextResponse.json(
+        { success: false, message: 'Verifica os campos do formulário.' },
         { status: 400 }
       )
     }
@@ -37,40 +100,33 @@ export async function POST(request: Request) {
       body: JSON.stringify({
         access_key: accessKey,
         subject: `Nova mensagem do site — ${nome}`,
-        from_name: 'Site Ana Margarida | Terapeuta EFT',
+        from_name: 'Ana Margarida | Terapeuta EFT',
         name: nome,
         email,
-        whatsapp,
-        preferencia,
-        message: `Nome: ${nome}\nE-mail: ${email}\nWhatsApp: ${whatsapp || 'Não informado'}\nPreferência de contacto: ${preferencia}\n\nMensagem:\n${motivo}`,
+        message: `Nome: ${nome}\nE-mail: ${email}\n\nMensagem:\n${motivo}`,
       }),
+      signal: AbortSignal.timeout(10000),
+      cache: 'no-store',
     })
 
-    const responseText = await response.text()
+    const result = await response.json().catch(() => null)
 
-    console.log('Web3Forms HTTP status:', response.status)
-    console.log('Web3Forms resposta:', responseText.slice(0, 1000))
+    if (!response.ok || !result?.success) {
+      console.error(
+        'Web3Forms: envio não confirmado. HTTP',
+        response.status
+      )
 
-    let result: { success?: boolean }
-
-    try {
-      result = JSON.parse(responseText)
-    } catch {
-      console.error('Web3Forms devolveu uma resposta que não é JSON.')
       return NextResponse.json(
-        { success: false, message: 'Resposta inválida do serviço de envio.' },
+        { success: false, message: 'Não foi possível enviar. Tenta novamente.' },
         { status: 502 }
       )
     }
 
-    if (!response.ok || !result.success) {
-      return NextResponse.json(
-        { success: false, message: 'Não foi possível enviar a mensagem. Tenta novamente.' },
-        { status: 502 }
-      )
-    }
-
-    return NextResponse.json({ success: true })
+    return NextResponse.json(
+      { success: true },
+      { headers: { 'Cache-Control': 'no-store' } }
+    )
   } catch (error) {
     console.error(
       'Erro na API de contacto:',
@@ -78,9 +134,13 @@ export async function POST(request: Request) {
     )
 
     return NextResponse.json(
-      { success: false, message: 'Ocorreu um erro. Tenta novamente mais tarde.' },
+      {
+        success: false,
+        message: 'Ocorreu um erro. Tenta novamente mais tarde.',
+      },
       { status: 500 }
     )
   }
 }
+
 
