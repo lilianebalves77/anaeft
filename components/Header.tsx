@@ -14,27 +14,22 @@ export default function Header() {
   const [open, setOpen] = useState(false)
 
   return (
-    <header className="fixed inset-x-0 top-0 z-50 border-b border-ink/10 bg-cream/90 backdrop-blur-xl">
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-5 sm:py-4 lg:px-10">
-        <a
-          href="#inicio"
-          className="group flex min-w-0 shrink items-center gap-3"
-          onClick={() => setOpen(false)}
-        >
-          <img
-            src="/ana-eft-logo.png"
-            alt=""
-            className="h-9 w-9 shrink-0 rounded-full object-cover shadow-sm sm:h-10 sm:w-10"
-          />
-          <span className="min-w-0 leading-none">
-            <strong className="display block truncate text-lg font-semibold sm:text-xl">
-              Ana Margarida 
-            </strong>
-            <small className="mt-1 block truncate text-[9px] font-bold uppercase tracking-[.16em] text-ink/80 sm:text-[10px]">
-              Terapeuta EFT
-            </small>
-          </span>
-        </a>
+   <header className="fixed inset-x-0 top-0 z-50 border-b border-ink/10 bg-cream/90 backdrop-blur-xl">
+  <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-5 sm:py-4 lg:px-10">
+    <a
+      href="#inicio"
+      className="group flex min-w-0 shrink items-center"
+      onClick={() => setOpen(false)}
+    >
+      <span className="min-w-0 leading-none">
+        <strong className="display block truncate text-lg font-semibold sm:text-xl">
+          Ana Margarida
+        </strong>
+        <small className="mt-1 block truncate text-[9px] font-bold uppercase tracking-[.16em] text-ink/80 sm:text-[10px]">
+          Terapeuta EFT
+        </small>
+      </span>
+    </a>
 
         <nav className="hidden items-center gap-7 lg:flex">
           {links.map(([label, href]) => (
